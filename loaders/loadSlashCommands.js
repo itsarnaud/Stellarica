@@ -13,8 +13,8 @@ module.exports = async client => {
       .setDefaultMemberPermissions(command.permission === 'aucune' ? null : command.permission);
 
     if (command.options?.length >= 1) {
-      for (let i; i < command.options.length; i++) {
-        slashCmd[`add${command.options[i].type.slice(0, 1).toLowerCase() + command.options[i].type.slice(1, command.options[i].type.length)}Option`](option => option.setName(command.options[i].name).setDescription(command.options[i].description).setRequired(command.options[i].required));
+      for (let i = 0; i < command.options.length; i++) {
+        slashCmd[`add${command.options[i].type.slice(0, 1).toUpperCase() + command.options[i].type.slice(1, command.options[i].type.length)}Option`](option => option.setName(command.options[i].name).setDescription(command.options[i].description).setRequired(command.options[i].required));
       }
     };
 
