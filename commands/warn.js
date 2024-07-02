@@ -47,15 +47,13 @@ module.exports = {
       db.query(`INSERT INTO warns (warnID, userID, moderatorID, reason, createdDate) VALUES (?, ?, ?, ?, ?)`, [ID, member.user.id, message.user.tag, reason, createdDate], (err, result) => {
         if (err) {
           console.error('Erreur lors de l\'exécution de la requête SQL :', err);
-        } else {
-          console.log('Résultat de la requête SQL :', result);
         }
       });
 
     }
 
     catch (err) {
-      console.log(err);
+      console.error(err);
       return message.reply(`Erreur : ${err}`);
     }
   }
