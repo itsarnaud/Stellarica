@@ -17,34 +17,81 @@ module.exports = {
     required: false
   }],
 
-  async run (client, message, args, db) {
+  async run (client, message, args, prisma) {
     try {
-      let warn = args.get('warn_id').value;
-      let member = args.get('membre');
+      let warnArg = args.get('warn_id');
+      let memberArg = args.get('membre');
+      
       await message.deferReply();
-      if (warn) {
-        db.query('DELETE FROM warns WHERE userID = ? AND warnID = ?', [member.user.id, warn], async (err, res) => {
-          if (err) {
-            return message.editReply('Erreur lors de l\'exécution de la requête SQL :' + err);
+      
+      if (warnArg && warnArg.value) {
+        try {
+          const deletedWarn = await prisma.warns.deleteMany({
+            where: {
+              user_id: memberArg.user.id,
+              warn_id: warnArg.value
+            }
+          });
+
+          if (deletedWarn.count === 0) {
+            return message.editReply(`Aucun avertissement trouvé avec l'ID \`${warnArg.value}\` pour ce membre.`);
           }
-          return message.editReply(`L'avertissement \`${warn}\` à bien été supprimé.`);
-        })
-        
+
+          let actionId = await client.function.createId('ACTION');
+          await prisma.moderation_logs.create({
+            data: {
+              action_id: actionId,
+              action_type: 'delwarn',
+              target_user_id: memberArg.user.id,
+              moderator_id: message.user.tag,
+              reason: `Suppression du warn ${warnArg.value}`,
+              guild_id: message.guild.id
+            }
+          });
+
+          return message.editReply(`L'avertissement \`${warnArg.value}\` a bien été supprimé.`);
+
+        } catch (err) {
+          console.error('Erreur Prisma :', err);
+          return message.editReply('Erreur lors de la suppression de l\'avertissement.');
+        }
       }
 
       else {
-        db.query('DELETE FROM warns WHERE userID = ?', [member.user.id], async (err, res) => {
-          if (err) {
-            return message.editReply('Erreur lors de l\'exécution de la requête SQL :' + err)
+        try {
+          const deletedWarns = await prisma.warns.deleteMany({
+            where: {
+              user_id: memberArg.user.id
+            }
+          });
+
+          if (deletedWarns.count === 0) {
+            return message.editReply(`Le membre \`${memberArg.user.username}\` n'a aucun avertissement à supprimer.`);
           }
 
-          return message.editReply(`Les avertissements du membre \`${member.user.username}\` ont bien été supprimé.`);
-        })
+          let actionId = await client.function.createId('ACTION');
+          await prisma.moderation_logs.create({
+            data: {
+              action_id: actionId,
+              action_type: 'delwarn',
+              target_user_id: memberArg.user.id,
+              moderator_id: message.user.tag,
+              reason: `Suppression de tous les warns (${deletedWarns.count} avertissements)`,
+              guild_id: message.guild.id
+            }
+          });
+
+          return message.editReply(`Les ${deletedWarns.count} avertissement${deletedWarns.count > 1 ? 's' : ''} du membre \`${memberArg.user.username}\` ont bien été supprimés.`);
+
+        } catch (err) {
+          console.error('Erreur Prisma :', err);
+          return message.editReply('Erreur lors de la suppression des avertissements.');
+        }
       }
     }
 
     catch (err) {
-      console.error(err)
+      console.error(err);
       return message.reply(`Erreur : ${err}`);
     }
   }

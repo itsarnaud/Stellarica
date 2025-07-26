@@ -10,7 +10,8 @@ const loadEvents   = require('./loaders/loadEvents');
 client.commands = new discord.Collection();
 
 client.function = {
-  createId: require('./fonctions/createId')
+  createId: require('./fonctions/createId'),
+  ensureUser: require('./fonctions/ensureUser')
 }
 
 client.login(token);

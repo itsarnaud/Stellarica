@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model guild_settings {
+  id                    Int       @id @default(autoincrement())
+  guild_id              String    @unique(map: "guild_id") @db.VarChar(20)
+  guild_name            String    @db.VarChar(100)
+  prefix                String?   @default("!") @db.VarChar(10)
+  moderation_channel_id String?   @db.VarChar(20)
+  auto_mod_enabled      Boolean?  @default(false)
+  max_warnings          Int?      @default(3)
+  mute_role_id          String?   @db.VarChar(20)
+  created_at            DateTime? @default(now()) @db.Timestamp(0)
+  updated_at            DateTime? @default(now()) @db.Timestamp(0)
+
+  // Relations
+  moderation_logs       moderation_logs[]
+
+  @@index([guild_id], map: "idx_guild_id")
+}
+
+model moderation_logs {
+  id             Int       @id @default(autoincrement())
+  action_id      String    @unique(map: "action_id") @db.VarChar(50)
+  action_type    String    @db.VarChar(20)
+  target_user_id String    @db.VarChar(20)
+  moderator_id   String    @db.VarChar(100)
+  reason         String    @db.Text
+  duration       String?   @db.VarChar(50)
+  guild_id       String    @db.VarChar(20)
+  created_at     DateTime? @default(now()) @db.Timestamp(0)
+
+  // Relations
+  target_user    users         @relation("UserModerationLogs", fields: [target_user_id], references: [user_id])
+  guild          guild_settings @relation(fields: [guild_id], references: [guild_id])
+
+  @@index([action_id], map: "idx_action_id")
+  @@index([action_type], map: "idx_action_type")
+  @@index([created_at], map: "idx_created_at")
+  @@index([guild_id], map: "idx_guild_id")
+  @@index([moderator_id], map: "idx_moderator_id")
+  @@index([target_user_id], map: "idx_target_user_id")
+}
+
+model sanctions {
+  id           Int       @id @default(autoincrement())
+  sanction_id  String    @unique(map: "sanction_id") @db.VarChar(50)
+  user_id      String    @db.VarChar(20)
+  moderator_id String    @db.VarChar(100)
+  type         String    @db.VarChar(20)
+  reason       String    @db.Text
+  start_date   DateTime  @db.DateTime(0)
+  end_date     DateTime? @db.DateTime(0)
+  is_active    Boolean?  @default(true)
+  created_at   DateTime? @default(now()) @db.Timestamp(0)
+
+  // Relations
+  user         users     @relation("UserSanctions", fields: [user_id], references: [user_id])
+
+  @@index([end_date], map: "idx_end_date")
+  @@index([is_active], map: "idx_is_active")
+  @@index([sanction_id], map: "idx_sanction_id")
+  @@index([type], map: "idx_type")
+  @@index([user_id], map: "idx_user_id")
+}
+
+model users {
+  id          Int       @id @default(autoincrement())
+  user_id     String    @unique(map: "user_id") @db.VarChar(20)
+  username    String    @db.VarChar(100)
+  joined_date DateTime  @db.Date
+  created_at  DateTime? @default(now()) @db.Timestamp(0)
+  updated_at  DateTime? @default(now()) @db.Timestamp(0)
+
+  // Relations
+  warns           warns[]           @relation("UserWarns")
+  sanctions       sanctions[]       @relation("UserSanctions")
+  moderation_logs moderation_logs[] @relation("UserModerationLogs")
+
+  @@index([user_id], map: "idx_user_id")
+  @@index([username], map: "idx_username")
+}
+
+model warns {
+  id           Int      @id @default(autoincrement())
+  warn_id      String   @unique(map: "warn_id") @db.VarChar(50)
+  user_id      String   @db.VarChar(20)
+  moderator_id String   @db.VarChar(100)
+  reason       String   @db.Text
+  created_at   DateTime @db.DateTime(0)
+  is_active    Boolean? @default(true)
+
+  // Relations
+  user         users    @relation("UserWarns", fields: [user_id], references: [user_id])
+
+  @@index([created_at], map: "idx_created_at")
+  @@index([moderator_id], map: "idx_moderator_id")
+  @@index([user_id], map: "idx_user_id")
+  @@index([warn_id], map: "idx_warn_id")
+}

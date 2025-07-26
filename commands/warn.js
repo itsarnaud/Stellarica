@@ -17,7 +17,7 @@ module.exports = {
     required: false
   }],
 
-  async run (client, message, args, db) {
+  async run (client, message, args, prisma) {
     try {
       let userArg = args.get('membre');
       if (!userArg) return message.reply('Aucun membre spécifié...');
@@ -42,11 +42,29 @@ module.exports = {
 
       await message.reply(`Le membre \`${user.tag}\` à été warn par ${message.user.tag} pour la raison suivante : **${reason}**`);
 
-      let ID = await client.function.createId('WARN');
-      let createdDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
-      db.query(`INSERT INTO warns (warnID, userID, moderatorID, reason, createdDate) VALUES (?, ?, ?, ?, ?)`, [ID, member.user.id, message.user.tag, reason, createdDate], (err, result) => {
-        if (err) {
-          console.error('Erreur lors de l\'exécution de la requête SQL :', err);
+      let warnId = await client.function.createId('WARN');
+
+      await client.function.ensureUser(prisma, user, member);
+
+      await prisma.warns.create({
+        data: {
+          warn_id: warnId,
+          user_id: member.user.id,
+          moderator_id: message.user.tag,
+          reason: reason,
+          created_at: new Date()
+        }
+      });
+
+      let actionId = await client.function.createId('ACTION');
+      await prisma.moderation_logs.create({
+        data: {
+          action_id: actionId,
+          action_type: 'warn',
+          target_user_id: member.user.id,
+          moderator_id: message.user.tag,
+          reason: reason,
+          guild_id: message.guild.id
         }
       });
 

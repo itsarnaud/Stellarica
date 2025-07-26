@@ -19,18 +19,16 @@ module.exports = {
     required: false
   }],
 
-  async run (client, message, args) {
+  async run (client, message, args, prisma) {
     try {
       let userArg = args.get("membre");
       if (!userArg) return message.reply('Aucun membre spécifié...');
       let user = await client.users.fetch(userArg.value);
-      console.dir(user);
       if (!user) return message.reply('Je n\'ai pas pu trouver ce membre...');
   
-      let member    = message.guild.members.cache.get(user.id); // user id
-      let reasonArg = args.get("raison"); // recupere la raison du ban
+      let member    = message.guild.members.cache.get(user.id);
+      let reasonArg = args.get("raison");
       let reason    = reasonArg ? reasonArg.value : "Aucune raison donnée";
-      console.log(`Raison : ${reason}`); // log la raison du ban
       
       if ((await message.guild.fetchOwner()).id === user.id) return message.reply('Tu ne peux pas bannir le merveilleux et magnifique propriétaire du serveur !');
       if (message.user.id === user.id) return message.reply('Tu ne peux pas te bannir toi-même');
@@ -45,7 +43,21 @@ module.exports = {
       await message.reply(`Le membre \`${user.tag}\` à été banni par ${message.user.tag} pour la raison suivante : **${reason}**`);
 
       await message.guild.bans.create(user.id, { reason });
-     
+
+      await client.function.ensureUser(prisma, user, member);
+
+      let actionId = await client.function.createId('ACTION');
+      await prisma.moderation_logs.create({
+        data: {
+          action_id: actionId,
+          action_type: 'ban',
+          target_user_id: user.id,
+          moderator_id: message.user.tag,
+          reason: reason,
+          guild_id: message.guild.id
+        }
+      });
+
     } catch (err) {
       console.error(err);
       return message.reply('Je n\'ai pas pu trouver ce membre...');

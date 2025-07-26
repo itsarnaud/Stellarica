@@ -23,7 +23,7 @@ module.exports = {
     required: false
   }],
 
-  async run (client, message, args) {
+  async run (client, message, args, prisma) {
 
     try {
       let userArg = args.get('membre');
@@ -53,6 +53,36 @@ module.exports = {
 
       await message.reply(`Le membre \`${user.tag}\` à été mute par ${message.user.tag} pendant ${time} pour la raison suivante : **${reason}**`);
       await member.timeout(ms(time), reason);
+
+      await client.function.ensureUser(prisma, user, member);
+
+      let sanctionId = await client.function.createId('SANCTION');
+      const endDate = new Date(Date.now() + ms(time));
+      
+      await prisma.sanctions.create({
+        data: {
+          sanction_id: sanctionId,
+          user_id: user.id,
+          moderator_id: message.user.tag,
+          type: 'mute',
+          reason: reason,
+          start_date: new Date(),
+          end_date: endDate
+        }
+      });
+
+      let actionId = await client.function.createId('ACTION');
+      await prisma.moderation_logs.create({
+        data: {
+          action_id: actionId,
+          action_type: 'mute',
+          target_user_id: user.id,
+          moderator_id: message.user.tag,
+          reason: reason,
+          duration: time,
+          guild_id: message.guild.id
+        }
+      });
 
 
     } catch (err) {

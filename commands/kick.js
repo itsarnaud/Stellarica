@@ -19,7 +19,7 @@ module.exports = {
     required: false
   }],
 
-  async run (client, message, args) {
+  async run (client, message, args, prisma) {
     try {
       let userArg = args.get('membre');
       if (!userArg) return message.reply('Aucun membre spécifié...');
@@ -42,6 +42,20 @@ module.exports = {
 
       await message.reply(`Le membre \`${user.tag}\` à été kick par ${message.user.tag} pour la raison suivante : **${reason}**`);
       await member.kick(reason);
+
+      await client.function.ensureUser(prisma, user, member);
+
+      let actionId = await client.function.createId('ACTION');
+      await prisma.moderation_logs.create({
+        data: {
+          action_id: actionId,
+          action_type: 'kick',
+          target_user_id: user.id,
+          moderator_id: message.user.tag,
+          reason: reason,
+          guild_id: message.guild.id
+        }
+      });
     }
     catch (err) {
       console.error(err);
